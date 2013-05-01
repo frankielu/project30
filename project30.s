@@ -4,8 +4,8 @@
 #                    #
 ######################
 
-# Partner1: (your name here), (Student ID here)
-# Partner2: (your name here), (Student ID here)
+# Partner1: Frankie Lu, A10052401
+# Partner2: James Hwang, (Student ID here)
 
 # Linked list structure
 # int data 4 bytes
