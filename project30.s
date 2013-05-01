@@ -4,7 +4,7 @@
 #                    #
 ######################
 
-# Partner1: Frankie Lu, A10052401
+# Partner1: Frankie Lu, A10052501
 # Partner2: James Hwang, (Student ID here)
 
 # Linked list structure
@@ -86,22 +86,24 @@ main:
 #################
 
 root:
-#callee procedures
-addiu $sp $sp -8
-sw $fp, 4($sp)
-addiu $fp, $sp, 8
 
-move $s0, $a0
-li $a0, 8
-li $v0, 9
-syscall
-sw $s0, 0($v0)
-sw $zero, 4($v0)
+	#callee procedures (initial)
+	addiu $sp $sp -8  #decrement stack pointer
+	sw $fp, 4($sp)    #save old frame pointer
+	addiu $fp, $sp, 8 #set frame pointer
 
-#callee procedures
-lw $fp, 4($sp)
-addiu $sp, $sp, 8
-jr $ra
+	#create single element linked list
+	move $s0, $a0     #move data from a0 into s0
+	li $a0, 8         #prepare to syscall sbrk with n = 8 bytes
+	li $v0, 9         #prepare to syscall sbrk
+	syscall
+	sw $s0, 0($v0)    #store the value of $s0 into the address of v0
+	sw $zero, 4($v0)  #the tail of v0 is set to null
+
+	#callee procedures (exit)
+	lw $fp, 4($sp)    #load frame pointer
+	addiu $sp, $sp, 8 #increment stack pointer
+	jr $ra            #jump back to importList
 	
 #################
 #   push_node   #
@@ -206,56 +208,65 @@ printDone:
 #################
 
 importList:
-#callee procedures
+	#callee procedures (initial)
+	addiu $sp, $sp, -12        #decrement the stack pointer
+	sw $ra, 8($sp)             #save return address
+	sw $fp, 4($sp)             #save old frame pointer
+	addiu $fp, $sp, 12         #set frame pointer
 
-#if address is null or arrLength is zero
-beq $a0, $zero, null
-beq $a1, $zero, null
-li $t1, 1                  #counter for v0
+	beq $a0, $zero, null       #return 0 if address is null
+	beq $a1, $zero, null       #return 0 if arrayLength is null
+	li $t1, 1                  #this is a counter to keep track of the head of the node
+beginImport:                       #loop start
+	beq $a1, $zero, stopImport #stop once arrayLength decrements to 0
+	lw $t0, 0($a0)             #load the data from a0 to t0
 
-beginImport:
-beq $a1, $zero, stopImport #stop if arrayLength is 0
-lw $t0, 0($a0)             #load the data from a0 to t0
+	#caller procedures (initial)
+	addiu $sp, $sp, -24        #decrement the stack pointer
+	sw $a0, 20($sp)            #save a0
+	sw $a1, 16($sp)            #save a1
+	sw $t1, 12($sp)            #save t1
+	sw $t2, 8($sp)             #save t2
+	sw $t3, 4($sp)             #save t3
+	move $a0, $t0              #move current array data into a0
 
-#caller procedures (initial)
-addiu $sp, $sp, -24
-sw $a0, 20($sp)
-sw $a1, 16($sp)
-sw $t1, 12($sp)
-sw $t2, 8($sp)
-sw $t3, 4($sp)
-move $a0, $t0              #move data into a0
+	jal root                   #jump to root procedure
 
-jal root
+	#caller procedures (exit)
+	lw $a0, 20($sp)            #restore a0
+	lw $a1, 16($sp)            #restore a1
+	lw $t1, 12($sp)            #restore t1
+	lw $t2, 8($sp)             #restore t2
+	lw $t3, 4($sp)             #restore t3
+	addiu $sp, $sp, 24         #increment stack pointer
 
-                           #caller procedures (exit)
-lw $a0, 20($sp)
-lw $a1, 16($sp)
-lw $t1, 12($sp)
-lw $t2, 8($sp)
-lw $t3, 4($sp)
-addiu $sp, $sp, 24
-
-#connect nodes
-beq $t1, $zero, z          #t1 says whether you should overwrite first node
-li $t1, 0                  #t1 = 0
-move $t2, $v0              #t2 is address of initial node
-addi $t3, $v0, 4           #t3 is address of end of current node
-j y
-
+	#connect nodes together
+	beq $t1, $zero, z          #will always branch unless we are dealing with the first node
+	li $t1, 0                  #t1 = 0
+	move $t2, $v0              #t2 is the head of the linked list
+	addi $t3, $v0, 4           #t3 is address of end of current node
+	j y                        #jump to y
 z:
-sw $v0, 0($t3)             #stores the value of v0 into address of t3
-addi $t3, $v0, 4           #t3 becomes address of end of current node
+	sw $v0, 0($t3)             #stores the address of the current node into the tail of the previous node
+	addi $t3, $v0, 4           #t3 becomes the address of the end of current node
 y:
-addi $a1, $a1, -1          #decrement arrayLength by 1
-addi $a0, $a0, 4           #increment address by 4
-j beginImport
+	addi $a1, $a1, -1          #decrement arrayLength by 1
+	addi $a0, $a0, 4           #increment address by 4
+
+	j beginImport              #proceed with the next data segment
 
 null:
-li $v0, 0
-jr $ra
+	li $v0, 0                  #set to 0 if a0 = null or a1 = 0
+	jr $ra                     #jump back to main
 
 stopImport:
+	move $v0, $t2              #move head of linked list to v0
+
+	#callee procedures (exit)
+	lw $ra, 8($sp)             #restore return address
+	lw $fp, 4($sp)             #restore frame pointer
+	addiu $sp, $sp, 12         #increment stack pointer
+	jr $ra                     #jump back to main
 
 	
 
